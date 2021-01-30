@@ -37,7 +37,7 @@ lando init --source pantheon
 lando init \
   --source pantheon \
   --pantheon-auth "$PANTHEON_MACHINE_TOKEN" \
-  --pantheon-site "$PANTEHON_SITE_NAME"
+  --pantheon-site "$PANTHEON_SITE_NAME"
 
 # Start it up
 lando start
@@ -65,6 +65,7 @@ config:
   index: true
   edge: true
   cache: true
+  composer_version: "2.0.7"
 ```
 
 If you do not already have a [Landofile](./../config/lando.md) for your Pantheon site, we highly recommend you use [`lando init`](./../basics/init.md) to get one as that will automatically populate the `framework`, `id` and `site` for you. Manually creating a Landofile with these things set correctly can be difficult and is *highly discouraged.*

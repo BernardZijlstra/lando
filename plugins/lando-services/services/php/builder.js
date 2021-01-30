@@ -28,6 +28,14 @@ const nginxConfig = options => ({
   version: options.via.split(':')[1],
 });
 
+const xdebugConfig = host => ([
+  `client_host=${host}`,
+  'discover_client_host=1',
+ 'log=/tmp/xdebug.log',
+ 'remote_enable=true',
+  `remote_host=${host}`,
+].join(' '));
+
 /*
  * Helper to build a package string
  */
@@ -76,15 +84,15 @@ const parseConfig = options => {
     case 'apache': return parseApache(options);
     case 'cli': return parseCli(options);
     case 'nginx': return parseNginx(options);
-  };
+  }
 };
 
 // Builder
 module.exports = {
   name: 'php',
   config: {
-    version: '7.3',
-    supported: ['7.4', '7.3', '7.2', '7.1', '7.0', '5.6', '5.5', '5.4', '5.3'],
+    version: '7.4',
+    supported: ['8.0', '7.4', '7.3', '7.2', '7.1', '7.0', '5.6', '5.5', '5.4', '5.3'],
     legacy: ['5.5', '5.4', '5.3'],
     path: [
       '/app/vendor/bin',
@@ -96,9 +104,11 @@ module.exports = {
       '/sbin',
       '/bin',
       '/var/www/.composer/vendor/bin',
+      '/helpers',
     ],
     confSrc: __dirname,
     command: ['sh -c \'a2enmod rewrite && apache2-foreground\''],
+    composer_version: '2.0.7',
     image: 'apache',
     defaultFiles: {
       _php: 'php.ini',
@@ -134,13 +144,17 @@ module.exports = {
         options.command.unshift('docker-php-entrypoint');
       }
 
+      // If xdebug is set to "true" then map it to "debug"
+      if (options.xdebug === true) options.xdebug = 'debug';
+
       // Build the php
       const php = {
         image: `devwithlando/php:${options.version}-${options.image}-2`,
         environment: _.merge({}, options.environment, {
           PATH: options.path.join(':'),
           LANDO_WEBROOT: `/app/${options.webroot}`,
-          XDEBUG_CONFIG: `remote_enable=true remote_host=${options._app.env.LANDO_HOST_IP}`,
+          XDEBUG_CONFIG: xdebugConfig(options._app.env.LANDO_HOST_IP),
+          XDEBUG_MODE: (options.xdebug === false) ? 'off' : options.xdebug,
         }),
         networks: (_.startsWith(options.via, 'nginx')) ? {default: {aliases: ['fpm']}} : {default: {}},
         ports: (_.startsWith(options.via, 'apache') && options.version !== 'custom') ? ['80'] : [],
@@ -158,6 +172,12 @@ module.exports = {
       // Add activate steps for xdebug
       if (options.xdebug) {
         utils.addBuildStep(['docker-php-ext-enable xdebug'], options._app, options.name, 'build_as_root_internal');
+      }
+
+      // Install the desired composer version
+      if (options.composer_version) {
+        const commands = [`/helpers/install-composer.sh ${options.composer_version}`];
+        utils.addBuildStep(commands, options._app, options.name, 'build_internal', true);
       }
 
       // Add in nginx if we need to

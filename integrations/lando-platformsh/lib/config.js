@@ -61,9 +61,9 @@ const replaceDefault = (data, replacer) => {
 /*
  * Helper to set primary route if needed
  */
-const setPrimaryRoute = (routes = []) => {
+const setPrimaryRoute = (routes = {}) => {
   // If we dont have a primary then set one
-  if (!_.some(routes, 'primary')) {
+  if (!_.isEmpty(routes) && !_.some(routes, 'primary')) {
     const firstUpstream = _.find(routes, {type: 'upstream'});
     firstUpstream.primary = true;
   }
@@ -78,7 +78,12 @@ const setPrimaryRoute = (routes = []) => {
 exports.findClosestApplication = (apps = []) => _(apps)
   .filter(app => app.closeness !== -1)
   .orderBy('closeness')
-  .thru(apps => apps[0])
+  // @NOTE: If there is not a "closest" app then just choose the first one that
+  // shows up so that an error is prevented
+  .thru(appsByCloseness => {
+    if (!_.isEmpty(appsByCloseness)) return appsByCloseness[0];
+    else return apps[0];
+  })
   .value();
 
 /*

@@ -12,8 +12,9 @@ You can easily add it to your Lando app by adding an entry to the [services](./.
 
 ## Supported versions
 
-*   [7.4](https://hub.docker.com/r/devwithlando/php)
-*   **[7.3](https://hub.docker.com/r/devwithlando/php)** **(default)**
+*   [8.0](https://hub.docker.com/r/devwithlando/php)
+*   **[7.4](https://hub.docker.com/r/devwithlando/php)** **(default)**
+*   [7.3](https://hub.docker.com/r/devwithlando/php)
 *   [7.2](https://hub.docker.com/r/devwithlando/php)
 *   [7.1](https://hub.docker.com/r/devwithlando/php)
 *   [7.0](https://hub.docker.com/r/devwithlando/php)
@@ -53,6 +54,7 @@ services:
     webroot: .
     xdebug: false
     composer: []
+    composer_version: '2.0.7'
     # Below only valid for via: cli
     command: tail -f /dev/null
     config:
@@ -104,11 +106,50 @@ services:
     command: php /app/src/artisan horizon
 ```
 
-### Toggling xdebug
+### Using xdebug
 
-You can enable the `xdebug` extension by setting `xdebug: true`. Lando will also automatically configure `xdebug.remote_enable` and `xdebug.remote_host` for you. This means that `xdebug` should be *ready to receive connections* out of the box.
+You can enable the `xdebug` extension by setting `xdebug: true` and doing a `lando rebuild`. When the extension is enabled Lando will automatically set the needed configuration for remote debugging. This means that `xdebug` _should_ be ready to receive connections out of the box.
 
-Note that unlike in previous versions of Lando, `xdebug: false` will now disable the `xdebug` extension instead of just disabling `xdebug.remote_enable`.
+If you are using `xdebug` version 3, which is installed by default for `php` 7.2+ you can optionally specify the mode.
+
+```yaml
+services:
+  myservice:
+    type: php:7.3
+    xdebug: "debug,develop"
+```
+
+For this version of `xdebug` setting `xdebug: true` will set `xdebug.mode=debug`. You can read more about `xdebug.mode` [here](https://xdebug.org/docs/all_settings#mode).
+
+#### Configuring xdebug
+
+If you'd like to override Lando's out of the box `xdebug` config the easiest way to do that is by setting the `XDEBUG_CONFIG` environment variable as a service level override.
+
+```yaml
+services:
+  myservice:
+    type: php:7.3
+    xdebug: "debug,develop"
+    overrides:
+      environment:
+        XDEBUG_CONFIG: "discover_client_host=0 client_host=localhost"
+```
+
+Note that you cannot set _every_ `xdebug` configuration option via `XDEBUG_CONFIG`, see [this](https://xdebug.org/docs/all_settings). If you need to configure something outside of the scope of `XDEBUG_CONFIG` we recommend you use a custom `php.ini`.
+
+You can also modify or unset `XDEBUG_MODE` in a similar way. For example if you wanted to manage `xdebug.mode` in your own `php.ini` you could so something like
+
+```yaml
+services:
+  myservice:
+    type: php:7.3
+    xdebug: true
+    overrides:
+      environment:
+        XDEBUG_MODE:
+    config:
+      php: config/php.ini
+```
 
 #### Setting up your IDE for XDEBUG
 
@@ -118,7 +159,7 @@ While Lando will handle the server side configuration for you, there is often a 
 
 An example config for [ATOM's](https://atom.io/) [`php-debug`](https://github.com/gwomacks/php-debug) plugin is shown below:
 
-```
+```json
 "php-debug":
   {
     ServerPort: 9000
@@ -151,6 +192,35 @@ xdebug.remote_host = YOUR HOST IP ADDRESS
 ```
 
 You can use `lando info --deep | grep IPAddress` to help discover the correct host ip address but please note that this can change and will likely differ from dev to dev.
+
+### Installing composer
+
+As of Lando `3.0.17` you can configure the version of `composer` you would like to install. This _should_ respect any of the versions listed on the [Composer download page](https://getcomposer.org/download/) but it is required you specify down to the patch version.
+
+```yaml
+services:
+  myservice:
+    type: php
+    composer_version: "1.10.1"
+```
+
+You can also choose to ignore the `composer` install step by setting `composer_version: false`. This will use whatever version of `composer` was last bundled with our `php` image. The following "convenience flags" are also available:
+
+```yaml
+# Install the latest stable 1.x version
+composer_version: 1
+composer_version: 1-latest
+
+# Install the latest stable 2.x version
+composer_version: 2
+composer_version: 2-latest
+
+# Install latest pre-release version
+composer_version: preview
+
+# Install latest commit
+composer_version: snapshot
+```
 
 ### Installing global dependencies
 
@@ -243,65 +313,65 @@ This is useful to note if you are not using absolute paths in any [tooling route
 
 ## Installed Extensions
 
-|           | 5.3 | 5.4 | 5.5 | 5.6 | 7.0 | 7.1 | 7.2 | 7.3 |7.4 |
-| --        | --- | --- | --- | --- | --- | --- | --- | --- |--- |
-| apc       |  X  |  X  |     |     |     |     |     |     |    |
-| apcu      |     |     |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| bcmath    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| bz2       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| calendar  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| Core      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| ctype     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| curl      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| date      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| dom       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| exif      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| fileinfo  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| filter    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| ftp       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| gd        |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| gettext   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| hash      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| iconv     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| imagick   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| imap      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| intl      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| json      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| ldap      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| libxml    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| mbstring  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| mcrypt    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| memcached |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| mysqli    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| mysqlnd   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| OAuth     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| OPcache   |     |     |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| openssl   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| pcntl     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| pcre      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| PDO       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| pdo_mysql |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| pdo_pgsql |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| pdo_sqlite|  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| Phar      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| posix     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| readline  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| redis     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| readline  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| Reflection|  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| session   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| SimpleXML |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| soap      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| SPL       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| sqlite3   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| standard  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| tokenizer |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| xdebug    |     |     |     |     |     |     |     |     |    |
-| xml       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| xmlreader |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| xmlwriter |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| zip       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
-| zlib      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  | X  |
+|           | 5.3 | 5.4 | 5.5 | 5.6 | 7.0 | 7.1 | 7.2 | 7.3 | 7.4 | 8.0 |
+| --        | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| apc       |  X  |  X  |     |     |     |     |     |     |     |     |
+| apcu      |     |     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |     |
+| bcmath    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| bz2       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| calendar  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| Core      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| ctype     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| curl      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| date      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| dom       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| exif      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| fileinfo  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| filter    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| ftp       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| gd        |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| gettext   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| hash      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| iconv     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| imagick   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |     |
+| imap      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| intl      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| json      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| ldap      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| libxml    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| mbstring  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| mcrypt    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| memcached |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |     |
+| mysqli    |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| mysqlnd   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| OAuth     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |     |
+| OPcache   |     |     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| openssl   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| pcntl     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| pcre      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| PDO       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| pdo_mysql |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| pdo_pgsql |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| pdo_sqlite|  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| Phar      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| posix     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| readline  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| redis     |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| readline  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| Reflection|  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| session   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| SimpleXML |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| soap      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| SPL       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| sqlite3   |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| standard  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| tokenizer |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| xdebug    |     |     |     |     |     |     |     |     |     |     |
+| xml       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| xmlreader |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| xmlwriter |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| zip       |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+| zlib      |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
 
 Note that `xdebug` is off by default but you can enable it by setting your `php` services config to `xdebug: true`. Read more about this in "Configuration" above.
 
